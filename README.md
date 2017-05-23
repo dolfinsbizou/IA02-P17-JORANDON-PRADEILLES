@@ -4,5 +4,5 @@ Play Arimaa: http://personal.inet.fi/koti/egaga/arimaa-begin/tutorial.html
 
 # Install
 
-Copy `./arimaa` into the apps/ folder of pengines.
+Copy `arimaa.pl` into the apps/arimaa folder of pengines.
 Run.
