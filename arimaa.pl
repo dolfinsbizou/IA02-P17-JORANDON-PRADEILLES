@@ -25,27 +25,27 @@ concat_list([X1|L], [X1|X2], Y):- concat_list(L, X2, Y).
 gen_numeric(Result, Result, _).
 gen_numeric(Result, Min, Max):- Min2 is Min+1, Min2 =< Max, gen_numeric(Result, Min2, Max).
 
-% get_opponents(Result, Board) : récupère les opposants sur le board. %
+% get_opponents(Result, Board) : récupère les opposants (gold) sur le board. %
 get_opponents([],[]).
 get_opponents([[Y,X,N,gold]|Queue],[[Y,X,N,gold]|Remaining]):- get_opponents(Queue, Remaining).
 get_opponents(Queue,[[_,_,_,silver]|Remaining]):- get_opponents(Queue, Remaining).
 
-% get_pieces : récupère ses propres pièces (silver) dans le paramètre 2 et les retourne dans le paramètre 1. %
+% get_pieces(Result, Board) : récupère ses propres pièces (silver) sur le board. %
 get_pieces([],[]).
 get_pieces([[Y,X,N,silver]|Queue],[[Y,X,N,silver]|Remaining]):- get_pieces(Queue, Remaining).
 get_pieces(Queue,[[_,_,_,gold]|Remaining]):- get_pieces(Queue, Remaining).
 
-% get_by_type : récupère une pièce par type (paramètre 3) dans le paramètre 2 et les retourne dans le paramètre 1. %
+% get_by_type(Result, Board, Type) : récupère les pièces d'un type (lapin, etc.) donné sur le board. %
 get_by_type([],[],_).
 get_by_type([[Y,X,Type,S]|Queue],[[Y,X,Type,S]|Remaining], Type):- get_by_type(Queue, Remaining, Type).
 get_by_type(Queue,[[_,_,_,_]|Remaining], Type):- get_by_type(Queue, Remaining, Type).
 
-% get_adjacent_pieces : Retourne dans le paramètre 1 la liste des pièces adjacentes à la pièce paramètre 2 du board dans le paramètre 3. %
+% get_adjacent_pieces(Result, Piece, Board) : Retourne la liste des pièces adjacentes sur le board à une pièce donnée. %
 get_adjacent_pieces([],_,[]).
 get_adjacent_pieces(Result, Piece, [Curr|Remaining]). % TODO
 
-% distance : Compute la distance entre deux couples de coordonnées. %
-distance(D, [X1, Y1], [X2, Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY. %TODO ajouter gen numeric pour X1 Y1
+% distance(Distance, Point1, Point2) : Compute la distance entre deux couples de coordonnées. Fonctionne aussi en mode générateur. %
+distance(D, [X1, Y1], [X2, Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), gen_numeric(X1, 0, 7), gen_numeric(Y1, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY.
 
 % get_moves_for_given_piece : Retourne dans le paramètre 1 la liste des coups possibles pour une pièce du paramètre 2 sur le board dans le paramètre 3. %
 %get_possible_moves([], _, []).
