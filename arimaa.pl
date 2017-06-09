@@ -40,17 +40,23 @@ get_by_type([],[],_).
 get_by_type([[Y,X,Type,S]|Queue],[[Y,X,Type,S]|Remaining], Type):- get_by_type(Queue, Remaining, Type).
 get_by_type(Queue,[[_,_,_,_]|Remaining], Type):- get_by_type(Queue, Remaining, Type).
 
-% get_adjacent_pieces(Result, Piece, Board) : Retourne la liste des pièces adjacentes sur le board à une pièce donnée. %
-get_adjacent_pieces([],_,[]).
-get_adjacent_pieces(Result, Piece, [Curr|Remaining]). % TODO
+% get_on_coord(Result, Coord, Board) : récupère une pièce sur les coordonnées données si elle existe. %
+get_on_coord([Y,X,Type,Side], [X,Y], [[Y,X,Type,Side]|_]):- !.
+get_on_coord(Result, Coord, [_|Remaining]):- get_on_coord(Result, Coord, Remaining).
+
+% get_adjacent_pieces(Result, Coord, Board) : Retourne la liste des pièces adjacentes sur le board à une coordonnée donnée. get_adjacent_piece peut aussi vérifier si il existe une pièce adjacente d'une position donnée. %
+get_adjacent_pieces(Result, Coord, Board):- setof(Adj, get_adjacent_piece(Adj, Coord, Board), Result).
+get_adjacent_piece(Result, [X1,Y1], Board):- distance(1, [X1,Y1], [X2,Y2]), get_on_coord(Result, [X2,Y2], Board).
 
 % distance(Distance, Point1, Point2) : Compute la distance entre deux couples de coordonnées. Fonctionne aussi en mode générateur. %
-distance(D, [X1, Y1], [X2, Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), gen_numeric(X1, 0, 7), gen_numeric(Y1, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY.
+distance(D, [X1,Y1], [X2,Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), gen_numeric(X1, 0, 7), gen_numeric(Y1, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY.
 
-% get_moves_for_given_piece : Retourne dans le paramètre 1 la liste des coups possibles pour une pièce du paramètre 2 sur le board dans le paramètre 3. %
+% distance_on_board(Distance, Point1, Point2, Board) : Compute la distance entre deux couples de coordonnées compte tenu du plateau. %
+
+% get_moves_for_given_piece : Retourne dans le paramètre 1 la liste des destinations (ou liste de mouvements ? TODO selon distance_on_board) possibles pour une pièce du paramètre 2 sur le board dans le paramètre 3. %
 %get_possible_moves([], _, []).
-get_possible_moves(Result, Piece, Board):- setof([X,Y], get_possible_move([X,Y], Piece, Board), Result).
-get_possible_move([X2,Y2], [X1,Y1,_,_], Board):- distance(D, [X1, Y1], [X2, Y2]), D < 5. %TODO
+get_moves_for_given_piece(Result, Piece, Board):- setof([X,Y], get_move_for_given_piece([X,Y], Piece, Board), Result).
+get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance(D, [X1, Y1], [X2, Y2]), D < 5, D > 0. %TODO on ne doit pas utiliser distance, mais distance_on_board qui tient compte du board ; selon comment est fait ce prédicat il faudra ausi éliminer les mouvements qui font aboutir à une pièce
 
 % get_dangerous_holes_by_side : une fonction qui retourne les positions des trous noirs sans pièces d'un type donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le type donné. TODO %
 
