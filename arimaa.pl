@@ -13,7 +13,19 @@ concat_list(Y, [], Y).
 concat_list([X1|L], [X1|X2], Y):- concat_list(L, X2, Y).
 
 % length_list(Result, List) : retourne la taille d'une liste. %
-% TODO
+length_list(0, []).
+length_list(N, [_|Q]):-
+	length_list(M, Q),
+	N is M+1.
+
+% nth(Index, List, Elem) : retourne l'index d'un élément donné, ou l'élément donné pour un index.
+nth(1, [X|_], X).
+nth(N, [X|Y], E):-
+	length_list(Max, [X|Y]),
+	gen_numeric(N, 1, Max),
+	N > 1,
+	M is N-1,
+	nth(M, Y, E).
 
 % gen_numeric(Result, Begin, End) : Génère un entier entre les deux bornes. %
 gen_numeric(Result, Result, _).
@@ -46,13 +58,21 @@ get_adjacent_piece(Result, [X1,Y1], Board):- distance(1, [X1,Y1], [X2,Y2]), get_
 distance(D, [X1,Y1], [X2,Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), gen_numeric(X1, 0, 7), gen_numeric(Y1, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY.
 
 % distance_on_board(Distance, Point1, Point2, Board) : Compute la distance entre deux couples de coordonnées compte tenu du plateau. %
+distance_on_board(Distance, Point1, [X,Y], Board):- distance(Distance, Point1, [X,Y]), \+ get_on_coord(_, [X,Y], Board).
+% TODO pour l'instant on élimine juste les destinations correspondant à des pièces : c'est évidemment incomplet, à voir si on améliore ça pour avoir une vraie fonction digne de ce nom (éventuellement regarder le code du jeu pour voir comment eux font. Sinon quand il fera la décomposition en mouvement, en prenant en compte le plateau il risque parfois de créer des déplacements de plus de 4 mouvements. On peut alors décider de tronquer les mouvements après le 4e.)
+
+% compare_pieces(Result, Piece1, Piece2) : Retourne 1 si la pièce 1 est plus forte que la pièce 2, -1 si la pièce 2 est plus forte que la pièce 1, 0 si elles sont égales.
+compare_pieces(0, [_,_,Type,_], [_,_,Type,_]):- !.
+compare_pieces(R, [_,_,Type1,_], [_,_,Type2,_]):-
+	nth(X1, [rabbit, cat, dog, horse, camel, elephant], Type1),
+	nth(X2, [rabbit, cat, dog, horse, camel, elephant], Type2),
+	(X1>X2 -> R is 1 ; R is -1), !.
 
 % get_moves_for_given_piece(Result, Piece, Board) : Retourne la liste des destinations (ou liste de mouvements ? TODO selon distance_on_board) possibles pour une pièce donné sur le board. %
 %get_possible_moves([], _, []).
 get_moves_for_given_piece(Result, Piece, Board):- setof([X,Y], get_move_for_given_piece([X,Y], Piece, Board), Result).
-get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance(D, [X1, Y1], [X2, Y2]), D < 5, D > 0.
-%TODO on ne doit pas utiliser distance, mais distance_on_board qui tient compte du board ; selon comment est fait ce prédicat il faudra ausi éliminer les mouvements qui font aboutir à une pièce.
-%TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous
+get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
+% TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous
 
 % get_dangerous_holes_by_side(Result, Type, Board) : Une fonction qui retourne les positions des trous noirs sans pièces d'un type donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le type donné. TODO %
 
