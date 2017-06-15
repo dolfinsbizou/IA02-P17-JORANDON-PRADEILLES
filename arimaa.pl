@@ -80,6 +80,13 @@ get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1
 
 % convert_to_move(Result, Input) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
 
+% count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
+count_by_type_and_side(0, _, _, []).
+count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1, !.
+count_by_type_and_side(N, Type, Side, [[_,_,_,_]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
+
+% is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
+
 %%% Moteur de jeu %%%
 
 % get_moves(Moves, Gamestate, Board) : Le moteur de jeu en lui même. %
