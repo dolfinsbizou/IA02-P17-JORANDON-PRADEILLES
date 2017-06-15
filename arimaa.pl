@@ -72,7 +72,7 @@ compare_pieces(R, [_,_,Type1,_], [_,_,Type2,_]):-
 %get_possible_moves([], _, []).
 get_moves_for_given_piece(Result, Piece, Board):- setof([X,Y], get_move_for_given_piece([X,Y], Piece, Board), Result).
 get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
-% TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous
+% TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous pendant le parcours : je pense qu'on va devoir décomposer le mouvement avant.
 
 % get_dangerous_holes_by_side(Result, Type, Board) : Une fonction qui retourne les positions des trous noirs sans pièces d'un type donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le type donné. TODO %
 
