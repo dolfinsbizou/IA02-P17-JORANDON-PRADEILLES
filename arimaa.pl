@@ -86,6 +86,14 @@ count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_ty
 count_by_type_and_side(N, Type, Side, [[_,_,_,_]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
 
 % is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
+%%Moteur de MinMax %%
+%eval_function(X,board) : Evalue la valeur d'un mouvement
+
+%eval_state(val,board) : Evalue la valeur du plateau
+%eval_state(val,board):- isWinningState(board) ,!,val is 1000000.
+%eval_state(val,board):- val is eval_function(board).
+
+%minmax() : Moteur de l'algo minmax
 
 %%% Moteur de jeu %%%
 
