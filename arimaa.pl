@@ -85,31 +85,31 @@ count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_ty
 count_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, count_by_type_and_side(N, Type, Side, Remaining).
 
 % is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
-<<<<<<< HEAD
-%%Moteur de MinMax %%
-%eval_function(X,board) : Evalue la valeur d'un mouvement
-eval_function(X,board):- count_by_type_and_side(Result1,rabbit,silver,board),
-                        count_by_type_and_side(Result2,cat,silver,board),
-                        count_by_type_and_side(Result3,dog,silver,board),
-                        count_by_type_and_side(Result4,horse,silver,board),
-                        count_by_type_and_side(Result5,camel,silver,board),
-                        count_by_type_and_side(Result6,elephant,silver,board),
-                        count_by_type_and_side(Result7,rabbit,gold,board),
-                        count_by_type_and_side(Result8,cat,gold,board),
-                        count_by_type_and_side(Result9,dog,gold,board),
-                        count_by_type_and_side(Result10,horse,gold,board),
-                        count_by_type_and_side(Result11,horse,gold,board),
-                        count_by_type_and_side(Result12,elephant,gold,board),
-                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)
-%eval_state(val,board) : Evalue la valeur du plateau
-%eval_state(val,board):- isWinningState(board) ,!,val is 1000000.
-%eval_state(val,board):- val is eval_function(board).
-
-%minmax() : Moteur de l'algo minmax
-=======
 is_winning_state(Board):- count_by_type_and_side(0, rabbit, gold, Board).
 is_winning_state(Board):- gen_numeric(X, 0, 7), get_on_coord([7, X, rabbit, silver], [X, 7], Board).
->>>>>>> 7a57ecd5859e9efa7f51b9ef1f5819d1d17efdce
+
+%%Moteur de MinMax %%
+%eval_function(X,Board) : Evalue la valeur d'un mouvement
+eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
+                        count_by_type_and_side(Result2,cat,silver,Board),
+                        count_by_type_and_side(Result3,dog,silver,Board),
+                        count_by_type_and_side(Result4,horse,silver,Board),
+                        count_by_type_and_side(Result5,camel,silver,Board),
+                        count_by_type_and_side(Result6,elephant,silver,Board),
+                        count_by_type_and_side(Result7,rabbit,gold,Board),
+                        count_by_type_and_side(Result8,cat,gold,Board),
+                        count_by_type_and_side(Result9,dog,gold,Board),
+                        count_by_type_and_side(Result10,horse,gold,Board),
+                        count_by_type_and_side(Result11,horse,gold,Board),
+                        count_by_type_and_side(Result12,elephant,gold,Board),
+                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)
+%eval_state(val,Board) : Evalue la valeur du plateau
+%eval_state(val,Board):- is_winning_state(Board) ,!,val is 1000000.
+%eval_state(val,Board):- val is eval_function(Board).
+
+%minmax() : Moteur de l'algo minmax
+
+
 
 %%% Moteur de jeu %%%
 
