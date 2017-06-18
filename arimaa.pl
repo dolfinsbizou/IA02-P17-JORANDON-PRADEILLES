@@ -88,7 +88,19 @@ count_by_type_and_side(N, Type, Side, [[_,_,_,_]|Remaining]):- count_by_type_and
 % is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
 %%Moteur de MinMax %%
 %eval_function(X,board) : Evalue la valeur d'un mouvement
-
+eval_function(X,board):- count_by_type_and_side(Result1,rabbit,silver,board),
+                        count_by_type_and_side(Result2,cat,silver,board),
+                        count_by_type_and_side(Result3,dog,silver,board),
+                        count_by_type_and_side(Result4,horse,silver,board),
+                        count_by_type_and_side(Result5,camel,silver,board),
+                        count_by_type_and_side(Result6,elephant,silver,board),
+                        count_by_type_and_side(Result7,rabbit,gold,board),
+                        count_by_type_and_side(Result8,cat,gold,board),
+                        count_by_type_and_side(Result9,dog,gold,board),
+                        count_by_type_and_side(Result10,horse,gold,board),
+                        count_by_type_and_side(Result11,horse,gold,board),
+                        count_by_type_and_side(Result12,elephant,gold,board),
+                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)
 %eval_state(val,board) : Evalue la valeur du plateau
 %eval_state(val,board):- isWinningState(board) ,!,val is 1000000.
 %eval_state(val,board):- val is eval_function(board).
