@@ -69,7 +69,6 @@ compare_pieces(R, [_,_,Type1,_], [_,_,Type2,_]):-
 	(X1>X2 -> R is 1 ; R is -1), !.
 
 % get_moves_for_given_piece(Result, Piece, Board) : Retourne la liste des destinations (ou liste de mouvements ? TODO selon distance_on_board) possibles pour une pièce donné sur le board. %
-%get_possible_moves([], _, []).
 get_moves_for_given_piece(Result, Piece, Board):- setof([X,Y], get_move_for_given_piece([X,Y], Piece, Board), Result).
 get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
 % TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous pendant le parcours : je pense qu'on va devoir décomposer le mouvement avant.
@@ -82,10 +81,11 @@ get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1
 
 % count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
 count_by_type_and_side(0, _, _, []).
-count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1, !.
-count_by_type_and_side(N, Type, Side, [[_,_,_,_]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
+count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1.
+count_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, count_by_type_and_side(N, Type, Side, Remaining).
 
 % is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
+<<<<<<< HEAD
 %%Moteur de MinMax %%
 %eval_function(X,board) : Evalue la valeur d'un mouvement
 eval_function(X,board):- count_by_type_and_side(Result1,rabbit,silver,board),
@@ -106,6 +106,10 @@ eval_function(X,board):- count_by_type_and_side(Result1,rabbit,silver,board),
 %eval_state(val,board):- val is eval_function(board).
 
 %minmax() : Moteur de l'algo minmax
+=======
+is_winning_state(Board):- count_by_type_and_side(0, rabbit, gold, Board).
+is_winning_state(Board):- gen_numeric(X, 0, 7), get_on_coord([7, X, rabbit, silver], [X, 7], Board).
+>>>>>>> 7a57ecd5859e9efa7f51b9ef1f5819d1d17efdce
 
 %%% Moteur de jeu %%%
 
