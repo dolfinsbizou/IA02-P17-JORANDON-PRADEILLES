@@ -102,9 +102,9 @@ eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
                         count_by_type_and_side(Result10,horse,gold,Board),
                         count_by_type_and_side(Result11,horse,gold,Board),
                         count_by_type_and_side(Result12,elephant,gold,Board),
-                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)
-%eval_state(val,Board) : Evalue la valeur du plateau
-%eval_state(val,Board):- is_winning_state(Board) ,!,val is 1000000.
+                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80).
+%eval_state(val,Board) : Evalue la valeur du plateau 
+%eval_state(val,Board):- is_winning_state(Board) , !, val is 1000000.
 %eval_state(val,Board):- val is eval_function(Board).
 
 %minmax() : Moteur de l'algo minmax
@@ -112,11 +112,11 @@ eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
 %minmax():-choose_move(best,get_possible_moves(Board))
 
 %choose_move():choisis le meilleur coup possible parmis les coup proposer
-choose_move(best,[]).
+choose_move(_,[]).
 %si move1 possède une meilleur valeur que best alors on remplace best par ce mouvement%
-choose_move(best,[MOVE1|Q]):-eval_state(X,board_after_move_best),eval_state(Y,board_after_move1),Y>X,!,best is MOVE1 best.
+choose_move(Best,[MOVE1|Q]):-eval_state(X,board_after_move_best),eval_state(Y,board_after_move1),Y>X,!, Best is MOVE1.
 %sinon on ne fait rien%
-choose_move(best,[MOVE1|Q]).
+choose_move(Best,[MOVE1|Q]).
 
 %%% Moteur de jeu %%%
 
