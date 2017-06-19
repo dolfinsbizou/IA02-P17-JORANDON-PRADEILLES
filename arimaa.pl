@@ -61,23 +61,56 @@ distance(D, [X1,Y1], [X2,Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), ge
 distance_on_board(Distance, Point1, [X,Y], Board):- distance(Distance, Point1, [X,Y]), \+ get_on_coord(_, [X,Y], Board).
 % TODO pour l'instant on élimine juste les destinations correspondant à des pièces : c'est évidemment incomplet, à voir si on améliore ça pour avoir une vraie fonction digne de ce nom (éventuellement regarder le code du jeu pour voir comment eux font. Sinon quand il fera la décomposition en mouvement, en prenant en compte le plateau il risque parfois de créer des déplacements de plus de 4 mouvements. On peut alors décider de tronquer les mouvements après le 4e.)
 
-% compare_pieces(Result, Piece1, Piece2) : Retourne 1 si la pièce 1 est plus forte que la pièce 2, -1 si la pièce 2 est plus forte que la pièce 1, 0 si elles sont égales.
-compare_pieces(0, [_,_,Type,_], [_,_,Type,_]):- !.
-compare_pieces(R, [_,_,Type1,_], [_,_,Type2,_]):-
+% compare_types(Result, Type1, Type2) : Retourne 1 si le type 1 est plus fort que le type 2, -1 si le type 2 est plus fort que le type 1, 0 si ils sont égaux.
+compare_types(0, Type, Type):- !.
+compare_types(R, Type1, Type2):-
 	nth(X1, [rabbit, cat, dog, horse, camel, elephant], Type1),
 	nth(X2, [rabbit, cat, dog, horse, camel, elephant], Type2),
 	(X1>X2 -> R is 1 ; R is -1), !.
 
-% get_moves_for_given_piece(Result, Piece, Board) : Retourne la liste des destinations (ou liste de mouvements ? TODO selon distance_on_board) possibles pour une pièce donné sur le board. %
-get_moves_for_given_piece(Result, Piece, Board):- setof([X,Y], get_move_for_given_piece([X,Y], Piece, Board), Result).
-get_move_for_given_piece([X2,Y2], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
-% TODO il faut interdire aussi les mouvements si une pièce adverse plus forte est en contact avec nous pendant le parcours : je pense qu'on va devoir décomposer le mouvement avant.
+% can_move(Piece, Board) : s'unifie si une pièce donnée peut bouger.
+can_move([Y,X,Type,_], Board):-
+	get_adjacent_pieces(Adj, [X,Y], Board),
+	Init1 is 4,
+	(X is 0 -> Init2 is Init1-1 ; Init2 is Init1),
+	(X is 7 -> Init3 is Init2-1 ; Init3 is Init2),
+	(Y is 0 -> Init4 is Init3-1 ; Init4 is Init3),
+	(Y is 7 -> Init is Init4-1 ; Init is Init4),
+   	can_move_internal(Init, Adj),
+	\+ stuck_by_opponent(Type, Adj, 1).
+can_move_internal(Val, []):- Val > 0.
+can_move_internal(Val, [_|Remaining]):- Val1 is Val-1, can_move_internal(Val1, Remaining).
+stuck_by_opponent(_, [], X):- X > 1, !.
+stuck_by_opponent(Type, [[_,_,T,gold]|Remaining], Act):- compare_types(R, T, Type), (R is 1 -> Next is Act*2 ; Next is Act), stuck_by_opponent(Type, Remaining, Next), !.
 
-% get_dangerous_holes_by_side(Result, Type, Board) : Une fonction qui retourne les positions des trous noirs sans pièces d'un type donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le type donné. TODO %
+% get_moves_for_given_piece(Result, Piece, Board) : Retourne la liste des coups possibles pour une pièce donné sur le board. %
+get_moves_for_given_piece([], Piece, Board):- \+ can_move(Piece, Board).
+get_moves_for_given_piece(Result, Piece, Board):- can_move(Piece, Board), setof(Move, get_move_for_given_piece(Move, Piece, Board), Result).
+get_move_for_given_piece([[X1,Y1], [X2,Y2]], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
+% TODO Primordial il faut aussi faire la partie pour push
 
-% get_nearest_piece(Result, Position, Board) : Une fonction qui pour une position donnée retourne la pièce la plus proche. TODO %
+% get_possible_moves(Result, Board_curr, Board) : Retourne la liste des coups possibles pour toutes les pièces argent du tableau sous forme d'une liste de [Origine, Destination].
+get_possible_moves([], [], _).
+get_possible_moves(Result, [[Y,X,Type,silver]|Remaining], Board):- get_moves_for_given_piece(Result2, [Y,X,Type,silver], Board), get_possible_moves(Result1, Remaining, Board), concat_list(Result, Result2, Result1). 
+get_possible_moves(Result, [[_,_,_,gold]|Remaining], Board):- get_possible_moves(Result, Remaining, Board). 
+
+% get_dangerous_holes_by_side(Result, Side, Board) : Une fonction qui retourne les positions des trous noirs sans pièces d'un côté donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le côté donné. %
+get_dangerous_holes_by_side(Result, Side, Board):- get_dangerous_holes_by_side_internal(Result, Side, [[2,2],[5,2],[2,5],[5,5]], Board).
+get_dangerous_holes_by_side_internal([], _, [], _).
+get_dangerous_holes_by_side_internal(Result, Side, [[X,Y]|Remaining], Board):- 
+	get_adjacent_pieces(Adj, [X,Y], Board),
+	(Side = gold -> get_opponents(Adj2, Adj) ; get_pieces(Adj2, Adj)),
+	length_list(Len, Adj2),
+	get_dangerous_holes_by_side_internal(Result1, Side, Remaining, Board), 
+	(Len = 0 -> Result = [[X,Y]|Result1] ; Result = Result1).
+
+% get_nearest_piece_by_side(Result, Position, Side, Board) : Une fonction qui pour une position donnée retourne la pièce d'un côté donné la plus proche. TODO %
 
 % convert_to_move(Result, Input) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
+% TODO : tronquer si on a plus de 5 mouvements, s'arrêter si on rencontre une pièce ou qu'on arrive à une pièce adjacente adverse plus puissante que nous. Pas parfait mais bon.
+% TODO aussi gérer le fait de pousser une pièce
+
+% simulate_to_board(Result, Moves, Board) : Prend une liste de mouvement unitaires et les applique au Board. %
 
 % count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
 count_by_type_and_side(0, _, _, []).
@@ -102,9 +135,9 @@ eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
                         count_by_type_and_side(Result10,horse,gold,Board),
                         count_by_type_and_side(Result11,horse,gold,Board),
                         count_by_type_and_side(Result12,elephant,gold,Board),
-                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)
-%eval_state(val,Board) : Evalue la valeur du plateau
-%eval_state(val,Board):- is_winning_state(Board) ,!,val is 1000000.
+                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80).
+%eval_state(val,Board) : Evalue la valeur du plateau 
+%eval_state(val,Board):- is_winning_state(Board) , !, val is 1000000.
 %eval_state(val,Board):- val is eval_function(Board).
 
 %minmax() : Moteur de l'algo minmax
@@ -112,11 +145,11 @@ eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
 %minmax():-choose_move(best,get_possible_moves(Board))
 
 %choose_move():choisis le meilleur coup possible parmis les coup proposer
-choose_move(best,[]).
+choose_move(Best,[]).
 %si move1 possède une meilleur valeur que best alors on remplace best par ce mouvement%
-choose_move(best,[MOVE1|Q]):-eval_state(X,board_after_move_best),eval_state(Y,board_after_move1),Y>X,!,best is MOVE1 best.
+choose_move(Best,[MOVE1|Q]):-eval_state(X,board_after_move_best),eval_state(Y,board_after_move1),Y>X,!,Best is MOVE1,choose_move(Best,[Q]).
 %sinon on ne fait rien%
-choose_move(best,[MOVE1|Q]).
+choose_move(Best,[MOVE1|Q]):-choose_move(Best,[Q]).
 
 %%% Moteur de jeu %%%
 
