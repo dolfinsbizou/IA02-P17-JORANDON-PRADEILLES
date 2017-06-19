@@ -136,9 +136,8 @@ eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
                         count_by_type_and_side(Result11,horse,gold,Board),
                         count_by_type_and_side(Result12,elephant,gold,Board),
                         X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80).
-
-%eval_state(val,Board) : Evalue la valeur du plateau
-%eval_state(val,Board):- is_winning_state(Board) ,!,val is 1000000.
+%eval_state(val,Board) : Evalue la valeur du plateau 
+%eval_state(val,Board):- is_winning_state(Board) , !, val is 1000000.
 %eval_state(val,Board):- val is eval_function(Board).
 
 %minmax() : Moteur de l'algo minmax
