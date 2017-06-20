@@ -121,9 +121,19 @@ get_nearest_piece_by_side(Result, Coord, Side, Board):-
 	nth(Idx, Dis, MinDis),
 	nth(Idx, Pieces, Result).
 
-% convert_to_move(Result, Input) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
-% TODO : tronquer si on a plus de 5 mouvements, s'arrêter si on rencontre une pièce ou qu'on arrive à une pièce adjacente adverse plus puissante que nous. Pas parfait mais bon.
+% convert_to_move(Result, Input, Board) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
 % TODO aussi gérer le fait de pousser une pièce
+convert_to_move(Result, [[X1,Y1],[X2,Y2]], Board):- DX is X2-X1, DY is Y2-Y1, convert_to_move_internal(Result, [X1,Y1], [DX,DY], 4, 1, Board).
+convert_to_move_internal([], _, [0,0], _, _, _):- !.
+convert_to_move_internal([], _, _,  N, _, _):- N < 1, !.
+convert_to_move_internal([[Res1]|Result] , [X,Y], [DX,DY], N, Parity, Board):-
+	M is N-1,
+	(Parity = 0 -> 
+		Parity2 is 1, DX2 is DX, X2 is X, (DY > 0 -> Y2 is Y+1, DY2 is DY-1 ; Y2 is Y-1, DY2 is DY+1) ;
+		Parity2 is 0, DY2 is DY, Y2 is Y, (DX > 0 -> X2 is X+1, DX2 is DX-1 ; X2 is X-1, DX2 is DX+1)
+	),
+	Res1 = [[X,Y],[X2,Y2]],
+	convert_to_move_internal(Result, [X2,Y2], [DX2, DY2], M, Parity2, Board), !.
 
 % update_nth(List, Idx, New, Result) : Met à jour une liste en modifiant l'élément à l'index donné. %
 % via : https://stackoverflow.com/questions/8519203/prolog-replace-an-element-in-a-list-at-a-specified-index %
