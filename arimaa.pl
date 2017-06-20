@@ -67,7 +67,6 @@ pieces_to_coord([[X,Y]|Result], [[Y,X,_,_]|Remaining]):- pieces_to_coord(Result,
 
 % distance_on_board(Distance, Point1, Point2, Board) : Compute la distance entre deux couples de coordonnées compte tenu du plateau. %
 distance_on_board(Distance, Point1, [X,Y], Board):- distance(Distance, Point1, [X,Y]), \+ get_on_coord(_, [X,Y], Board).
-% TODO pour l'instant on élimine juste les destinations correspondant à des pièces : c'est évidemment incomplet, à voir si on améliore ça pour avoir une vraie fonction digne de ce nom (éventuellement regarder le code du jeu pour voir comment eux font. Sinon quand il fera la décomposition en mouvement, en prenant en compte le plateau il risque parfois de créer des déplacements de plus de 4 mouvements. On peut alors décider de tronquer les mouvements après le 4e.)
 
 % compare_types(Result, Type1, Type2) : Retourne 1 si le type 1 est plus fort que le type 2, -1 si le type 2 est plus fort que le type 1, 0 si ils sont égaux.
 compare_types(0, Type, Type):- !.
@@ -77,7 +76,7 @@ compare_types(R, Type1, Type2):-
 	(X1>X2 -> R is 1 ; R is -1), !.
 
 % can_move(Piece, Board) : s'unifie si une pièce donnée peut bouger.
-can_move([Y,X,Type,_], Board):-
+can_move([Y,X,Type,Side], Board):-
 	get_adjacent_pieces(Adj, [X,Y], Board),
 	Init1 is 4,
 	(X is 0 -> Init2 is Init1-1 ; Init2 is Init1),
@@ -85,32 +84,37 @@ can_move([Y,X,Type,_], Board):-
 	(Y is 0 -> Init4 is Init3-1 ; Init4 is Init3),
 	(Y is 7 -> Init is Init4-1 ; Init is Init4),
    	can_move_internal(Init, Adj),
-	\+ stuck_by_opponent(Type, Adj, 1).
+	\+ stuck_by_opponent(Side, Type, Adj, 1).
 can_move_internal(Val, []):- Val > 0.
 can_move_internal(Val, [_|Remaining]):- Val1 is Val-1, can_move_internal(Val1, Remaining).
-stuck_by_opponent(_, [], X):- X > 1, !.
-stuck_by_opponent(Type, [[_,_,T,gold]|Remaining], Act):- compare_types(R, T, Type), (R is 1 -> Next is Act*2 ; Next is Act), stuck_by_opponent(Type, Remaining, Next), !.
+stuck_by_opponent(_, _, [], X):- X > 1, !.
+stuck_by_opponent(Side, Type, [[_,_,T,S]|Remaining], Act):- Side \= S, compare_types(R, T, Type), (R is 1 -> Next is Act*2 ; Next is Act), stuck_by_opponent(Side, Type, Remaining, Next), !.
+stuck_by_opponent(Side, Type, [[_,_,Type,Side]|Remaining], Act):- stuck_by_opponent(Side, Type, Remaining, Act), !.
 
 % get_moves_for_given_piece(Result, Piece, Board) : Retourne la liste des coups possibles pour une pièce donné sur le board. %
 get_moves_for_given_piece([], Piece, Board):- \+ can_move(Piece, Board).
 get_moves_for_given_piece(Result, Piece, Board):- can_move(Piece, Board), setof(Move, get_move_for_given_piece(Move, Piece, Board), Result).
 get_move_for_given_piece([[X1,Y1], [X2,Y2]], [Y1,X1,_,_], Board):- distance_on_board(D, [X1, Y1], [X2, Y2], Board), D < 5, D > 0.
-% TODO Primordial il faut aussi faire la partie pour push
 
 % get_possible_moves(Result, Board_curr, Board) : Retourne la liste des coups possibles pour toutes les pièces argent du tableau sous forme d'une liste de [Origine, Destination].
 get_possible_moves([], [], _).
 get_possible_moves(Result, [[Y,X,Type,silver]|Remaining], Board):- get_moves_for_given_piece(Result2, [Y,X,Type,silver], Board), get_possible_moves(Result1, Remaining, Board), concat_list(Result, Result2, Result1). 
 get_possible_moves(Result, [[_,_,_,gold]|Remaining], Board):- get_possible_moves(Result, Remaining, Board). 
 
+% get_opponent_moves(Result, Board_curr, Board) : Retourne la liste des coups possibles pour toutes les pièces or du tableau sous forme d'une liste de [Origine, Destination].
+get_opponent_moves([], [], _).
+get_opponent_moves(Result, [[Y,X,Type,gold]|Remaining], Board):- get_moves_for_given_piece(Result2, [Y,X,Type,gold], Board), get_opponent_moves(Result1, Remaining, Board), concat_list(Result, Result2, Result1). 
+get_opponent_moves(Result, [[_,_,_,silver]|Remaining], Board):- get_opponent_moves(Result, Remaining, Board). 
+
 % get_dangerous_holes_by_side(Result, Side, Board) : Une fonction qui retourne les positions des trous noirs sans pièces d'un côté donné autour. La question étant de pouvoir savoir si un trou noir présente un risque pour le côté donné. %
 get_dangerous_holes_by_side(Result, Side, Board):- get_dangerous_holes_by_side_internal(Result, Side, [[2,2],[5,2],[2,5],[5,5]], Board).
-get_dangerous_holes_by_side_internal([], _, [], _).
+get_dangerous_holes_by_side_internal([], _, [], _):- !.
 get_dangerous_holes_by_side_internal(Result, Side, [[X,Y]|Remaining], Board):- 
-	get_adjacent_pieces(Adj, [X,Y], Board),
+	(get_adjacent_pieces(Adj1, [X,Y], Board) -> Adj = Adj1 ; Adj = []),
 	(Side = gold -> get_opponents(Adj2, Adj) ; get_pieces(Adj2, Adj)),
 	length_list(Len, Adj2),
 	get_dangerous_holes_by_side_internal(Result1, Side, Remaining, Board), 
-	(Len = 0 -> Result = [[X,Y]|Result1] ; Result = Result1).
+	(Len = 0 -> Result = [[X,Y]|Result1] ; Result = Result1), !.
 
 % get_nearest_piece_by_side(Result, Coord, Side, Board) : Une fonction qui pour une position donnée retourne la pièce d'un côté donné la plus proche. %
 get_nearest_piece_by_side(Result, Coord, Side, Board):- 
@@ -121,19 +125,39 @@ get_nearest_piece_by_side(Result, Coord, Side, Board):-
 	nth(Idx, Dis, MinDis),
 	nth(Idx, Pieces, Result).
 
-% convert_to_move(Result, Input, Board) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
-% TODO aussi gérer le fait de pousser une pièce
+% convert_to_move(Result, Input, Board) : Convertit un couple source/destination en une liste de mouvements. %
 convert_to_move(Result, [[X1,Y1],[X2,Y2]], Board):- DX is X2-X1, DY is Y2-Y1, convert_to_move_internal(Result, [X1,Y1], [DX,DY], 4, 1, Board).
 convert_to_move_internal([], _, [0,0], _, _, _):- !.
 convert_to_move_internal([], _, _,  N, _, _):- N < 1, !.
-convert_to_move_internal([[Res1]|Result] , [X,Y], [DX,DY], N, Parity, Board):-
+convert_to_move_internal(Final , [X,Y], [DX,DY], N, Parity, Board):- 
 	M is N-1,
-	(Parity = 0 -> 
-		Parity2 is 1, DX2 is DX, X2 is X, (DY > 0 -> Y2 is Y+1, DY2 is DY-1 ; Y2 is Y-1, DY2 is DY+1) ;
-		Parity2 is 0, DY2 is DY, Y2 is Y, (DX > 0 -> X2 is X+1, DX2 is DX-1 ; X2 is X-1, DX2 is DX+1)
+	(Parity = 0 -> Parity2 is 1,
+		(DY \= 0 ->
+			DX2 is DX, X2 is X, (DY > 0 -> Y2 is Y+1, DY2 is DY-1 ; Y2 is Y-1, DY2 is DY+1) ;
+			DY2 is DY, Y2 is Y, (DX > 0 -> X2 is X+1, DX2 is DX-1 ; X2 is X-1, DX2 is DX+1)
+		) ;
+		Parity2 is 0,
+		(DX \= 0 ->
+			DY2 is DY, Y2 is Y, (DX > 0 -> X2 is X+1, DX2 is DX-1 ; X2 is X-1, DX2 is DX+1) ;
+			DX2 is DX, X2 is X, (DY > 0 -> Y2 is Y+1, DY2 is DY-1 ; Y2 is Y-1, DY2 is DY+1)
+		)
 	),
 	Res1 = [[X,Y],[X2,Y2]],
-	convert_to_move_internal(Result, [X2,Y2], [DX2, DY2], M, Parity2, Board), !.
+	% S'arrêter si on rencontre une pièce, ne fonctionne pas
+	%(get_on_coord(_, [X2,Y2], Board) ->
+	%	Final = [Res1|[]], Continue=0 ; Continue is 0
+	%),
+	Continue = 1,
+	(nth(_, [[2,2],[2,5],[5,2],[5,5]], [X2,Y2]), Continue=1 ->
+		Final = [Res1|[]], Continue1=0 ; Continue1=1
+	),
+	(Continue1=1 ->
+		(get_on_coord([_,_,_,gold], [X2,Y2], Board) ->
+				DPX is X2-X, DPY is Y2-Y, X3 is X2+DPX, Y3 is Y2+DPY, Final = [[[X2,Y2],[X3,Y3]]] ;
+			convert_to_move_internal(Result, [X2,Y2], [DX2, DY2], M, Parity2, Board), Final = [Res1|Result]
+   		) ;
+		true
+	), !.
 
 % update_nth(List, Idx, New, Result) : Met à jour une liste en modifiant l'élément à l'index donné. %
 % via : https://stackoverflow.com/questions/8519203/prolog-replace-an-element-in-a-list-at-a-specified-index %
@@ -152,21 +176,42 @@ simulate_to_board(Result, [[Source, [X2,Y2]]|Remaining], Board):-
 % count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
 count_by_type_and_side(0, _, _, []):- !.
 count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1, !.
-count_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
+count_by_type_and_side(N, Type, Side, [[_,_,_,_]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
 
 % check_by_type_and_side(Result, Type, Side, Board) : Vérifie le nombre de pièces sur le plateau d'un type et côté donnés.
 check_by_type_and_side(0, _, _, []).
-check_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1.
-check_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, count_by_type_and_side(N, Type, Side, Remaining).
+check_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- check_by_type_and_side(M, Type, Side, Remaining), N is M+1.
+check_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, check_by_type_and_side(N, Type, Side, Remaining).
 
 % is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse. %
 is_winning_state(Board):- check_by_type_and_side(0, rabbit, gold, Board).
 is_winning_state(Board):- gen_numeric(X, 0, 7), get_on_coord([7, X, rabbit, silver], [X, 7], Board).
 
+% get_nearest_pieces_by_side(Result, List, Side, Board) : Retourne pour chaque coordonée de la liste la distance de la pièce la plus proche du côté correspondant. %
+get_nearest_pieces_by_side([], [], _, _):- !.
+get_nearest_pieces_by_side([Dist|Result], [Coord|Remaining], Side, Board):- get_nearest_piece_by_side([Y,X,_,_], Coord, Side, Board), distance(Dist, Coord, [X,Y]), get_nearest_pieces_by_side(Result, Remaining, Side, Board), !.
+
+% multiply_list(Result, List, Value) : Multiplie tous les éléments de la liste par une valeur. %
+multiply_list([], [], _).
+multiply_list([Res|Result], [Curr|Remaining], Value):- multiply_list(Result, Remaining, Value), Res is Curr * Value.
+
+% sum_list(Result, List) : Somme tous les éléments d'une liste. %
+sum_list(0, []).
+sum_list(Result, [Curr|Remaining]):- sum_list(Result1, Remaining), Result is Curr + Result1.
+
+% max_list(List, Result) : Donne le maximum d'une liste. %
+% https://stackoverflow.com/questions/27455034/find-max-integer-in-a-list-in-prolog %
+max_list([H|T], Y):-
+	max_list(T,X),
+    (H > X ->
+     H = Y;
+     Y = X).
+max_list([X],X).
+
 %%%Moteur de MinMax %%%
 
-%eval_function(Result, Board) : Evalue la valeur d'un mouvement. %
-eval_function(X, Board):-
+%eval_function(Result, Board, Count) : Evalue la valeur d'un mouvement. %
+eval_function(X, Board, [SilverMovesCount, GoldMovesCount]):-
 	count_by_type_and_side(Result1,rabbit,silver,Board),
 	count_by_type_and_side(Result2,cat,silver,Board),
 	count_by_type_and_side(Result3,dog,silver,Board),
@@ -179,27 +224,44 @@ eval_function(X, Board):-
 	count_by_type_and_side(Result10,horse,gold,Board),
 	count_by_type_and_side(Result11,camel,gold,Board),
 	count_by_type_and_side(Result12,elephant,gold,Board),
-	X is ((Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)).
+	get_dangerous_holes_by_side(DangerousSilver, silver, Board),
+	get_nearest_pieces_by_side(DistancesSilver, DangerousSilver, silver, Board),
+	get_dangerous_holes_by_side(DangerousGold, gold, Board),
+	get_nearest_pieces_by_side(DistancesGold, DangerousGold, gold, Board),
+	sum_list(DS, DistancesSilver),
+	sum_list(DG, DistancesGold),
+	X is ((Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80 + SilverMovesCount + DS*50) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80 + GoldMovesCount + DG*50)).
 
-%eval_state(Result, Board) : évalue la valeur du plateau. %
-eval_state(Val, Board):- is_winning_state(Board) , !, Val is 1000000.
-eval_state(Val, Board):- eval_function(Val, Board).
+% eval_state(Result, Board, Count) : évalue la valeur du plateau. %
+eval_state(Val, Board, Count):- (is_winning_state(Board) -> Val is 1000000 ; eval_function(Val, Board, Count)).
 
-%minmax() : Moteur de l'algo minmax. %
-%avant le choose besoin de definir un coup au hasard%
-%minmax():-choose_move(best,get_possible_moves(Board))
+% minmax(Result, Board) : Moteur de l'algo minmax. %
+minmax(Result, Board):- get_possible_moves(Moves, Board, Board), length_list(SMC, Moves), get_opponent_moves(OMoves, Board, Board), length_list(GMC, OMoves), choose_move(Result, Moves, Board, [SMC, GMC]).
 
-% choose_move(Result, Moves) : choisit le meilleur coup possible parmi les coups proposés. %
-choose_move(_,[]).
-choose_move(Best,[Move|Remaining]):-
-	eval_state(X,board_after_move_best),
-	eval_state(Y,board_after_move1),
-	Y>X,!,
-	Best is Move,choose_move(Best,Remaining).
-choose_move(Best,[Move|Remaining]):- choose_move(Best,Remaining).
+% simulate_strategies(Result, Strategies, Board, Count) : Pour chaque mouvement, simule le coup et évalue son score. %
+simulate_strategies([], [], _, _).
+simulate_strategies(Result, [Curr|Remaining], Board, Count):-
+	convert_to_move(Move, Curr, Board),
+	simulate_strategies(Result1, Remaining, Board, Count),
+	(Move \= [] ->
+		simulate_to_board(NewBoard, Move, Board),
+		eval_state(Res, NewBoard, Count),
+		Result = [Res|Result1] ;
+		Result = Result1
+	).
+
+% choose_move(Result, Strategies, Board, Count) : choisit le meilleur coup possible parmi les coups proposés. %
+choose_move(Result, Strategies, Board, Count):-
+	simulate_strategies(Res, Strategies, Board, Count),
+	max_list(Res, Max),
+	nth(Idx, Res, Max),
+	nth(Idx, Strategies, Result).
 
 %%% Moteur de jeu %%%
 
 % get_moves(Moves, Gamestate, Board) : Le moteur de jeu en lui même. %
-get_moves([[[Y,X],[Y2,X]],[[Y2,X],[Y3,X]],[[Y3,X],[Y4,X]],[[Y4,X],[Y5,X]]], Gamestate, Board):- get_pieces(Pieces, Board), get_by_type([[Y,X,_,_]|_], Pieces, rabbit), Y2 is Y+1, Y3 is Y2+1, Y4 is Y3+1, Y5 is Y4+1, get_opponents([], Board).
-get_moves([[[1,0],[2,0]],[[2,0],[1,0]]], Gamestate, Board).
+
+convert_for_motor([], []).
+convert_for_motor([[[Y1,X1],[Y2,X2]]|Result], [[[X1,Y1],[X2,Y2]]|Remaining]):- convert_for_motor(Result, Remaining).
+
+get_moves(Result, _, Board):- minmax([[X1,Y1],[X2,Y2]], Board), convert_to_move(Result2, [[X1,Y1],[X2,Y2]], Board), convert_for_motor(Result1, Result2), (Result1 = [] -> Result = [[[1,0],[2,0]],[[2,0],[1,0]]] ; Result = Result1).
