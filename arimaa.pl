@@ -150,43 +150,53 @@ simulate_to_board(Result, [[Source, [X2,Y2]]|Remaining], Board):-
 	simulate_to_board(Result, Remaining, NewBoard), !.
 
 % count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
-count_by_type_and_side(0, _, _, []).
-count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1.
-count_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, count_by_type_and_side(N, Type, Side, Remaining).
+count_by_type_and_side(0, _, _, []):- !.
+count_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1, !.
+count_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- count_by_type_and_side(N, Type, Side, Remaining), !.
 
-% is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse.
-is_winning_state(Board):- count_by_type_and_side(0, rabbit, gold, Board).
+% check_by_type_and_side(Result, Type, Side, Board) : Vérifie le nombre de pièces sur le plateau d'un type et côté donnés.
+check_by_type_and_side(0, _, _, []).
+check_by_type_and_side(N, Type, Side, [[_,_,Type,Side]|Remaining]):- count_by_type_and_side(M, Type, Side, Remaining), N is M+1.
+check_by_type_and_side(N, Type, Side, [[_,_,T,S]|Remaining]):- Type \= T, Side \= S, count_by_type_and_side(N, Type, Side, Remaining).
+
+% is_winning_state(Board) : S'unifie si un de nos lapins est sur la ligne adverse OU qu'il n'y a plus aucun lapin adverse. %
+is_winning_state(Board):- check_by_type_and_side(0, rabbit, gold, Board).
 is_winning_state(Board):- gen_numeric(X, 0, 7), get_on_coord([7, X, rabbit, silver], [X, 7], Board).
 
-%%Moteur de MinMax %%
-%eval_function(X,Board) : Evalue la valeur d'un mouvement
-eval_function(X,Board):- count_by_type_and_side(Result1,rabbit,silver,Board),
-                        count_by_type_and_side(Result2,cat,silver,Board),
-                        count_by_type_and_side(Result3,dog,silver,Board),
-                        count_by_type_and_side(Result4,horse,silver,Board),
-                        count_by_type_and_side(Result5,camel,silver,Board),
-                        count_by_type_and_side(Result6,elephant,silver,Board),
-                        count_by_type_and_side(Result7,rabbit,gold,Board),
-                        count_by_type_and_side(Result8,cat,gold,Board),
-                        count_by_type_and_side(Result9,dog,gold,Board),
-                        count_by_type_and_side(Result10,horse,gold,Board),
-                        count_by_type_and_side(Result11,horse,gold,Board),
-                        count_by_type_and_side(Result12,elephant,gold,Board),
-                        X is (Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80).
-%eval_state(val,Board) : Evalue la valeur du plateau 
-%eval_state(val,Board):- is_winning_state(Board) , !, val is 1000000.
-%eval_state(val,Board):- val is eval_function(Board).
+%%%Moteur de MinMax %%%
 
-%minmax() : Moteur de l'algo minmax
+%eval_function(Result, Board) : Evalue la valeur d'un mouvement. %
+eval_function(X, Board):-
+	count_by_type_and_side(Result1,rabbit,silver,Board),
+	count_by_type_and_side(Result2,cat,silver,Board),
+	count_by_type_and_side(Result3,dog,silver,Board),
+	count_by_type_and_side(Result4,horse,silver,Board),
+	count_by_type_and_side(Result5,camel,silver,Board),
+	count_by_type_and_side(Result6,elephant,silver,Board),
+	count_by_type_and_side(Result7,rabbit,gold,Board),
+	count_by_type_and_side(Result8,cat,gold,Board),
+	count_by_type_and_side(Result9,dog,gold,Board),
+	count_by_type_and_side(Result10,horse,gold,Board),
+	count_by_type_and_side(Result11,camel,gold,Board),
+	count_by_type_and_side(Result12,elephant,gold,Board),
+	X is ((Result1*100 + Result2*40 + Result3*50 + Result4*60 + Result5*70 + Result6*80) - (Result7*100 + Result8*40 + Result9*50 + Result10*60 + Result11*70 + Result12*80)).
+
+%eval_state(Result, Board) : évalue la valeur du plateau. %
+eval_state(Val, Board):- is_winning_state(Board) , !, Val is 1000000.
+eval_state(Val, Board):- eval_function(Val, Board).
+
+%minmax() : Moteur de l'algo minmax. %
 %avant le choose besoin de definir un coup au hasard%
 %minmax():-choose_move(best,get_possible_moves(Board))
 
-%choose_move():choisis le meilleur coup possible parmis les coup proposer
-choose_move(Best,[]).
-%si move1 possède une meilleur valeur que best alors on remplace best par ce mouvement%
-choose_move(Best,[MOVE1|Q]):-eval_state(X,board_after_move_best),eval_state(Y,board_after_move1),Y>X,!,Best is MOVE1,choose_move(Best,[Q]).
-%sinon on ne fait rien%
-choose_move(Best,[MOVE1|Q]):-choose_move(Best,[Q]).
+% choose_move(Result, Moves) : choisit le meilleur coup possible parmi les coups proposés. %
+choose_move(_,[]).
+choose_move(Best,[Move|Remaining]):-
+	eval_state(X,board_after_move_best),
+	eval_state(Y,board_after_move1),
+	Y>X,!,
+	Best is Move,choose_move(Best,Remaining).
+choose_move(Best,[Move|Remaining]):- choose_move(Best,Remaining).
 
 %%% Moteur de jeu %%%
 
