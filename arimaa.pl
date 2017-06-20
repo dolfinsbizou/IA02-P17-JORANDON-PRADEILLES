@@ -57,6 +57,14 @@ get_adjacent_piece(Result, [X1,Y1], Board):- distance(1, [X1,Y1], [X2,Y2]), get_
 % distance(Distance, Point1, Point2) : Compute la distance entre deux couples de coordonnées. Fonctionne aussi en mode générateur. %
 distance(D, [X1,Y1], [X2,Y2]):- gen_numeric(X2, 0, 7), gen_numeric(Y2, 0, 7), gen_numeric(X1, 0, 7), gen_numeric(Y1, 0, 7), abs(X2-X1, DX), abs(Y2-Y1, DY), D is DX+DY.
 
+% distances(Result, List, Point) : Compute les distances d'une liste de couples de coordonnées à un point. %
+distances([], [], _):- !.
+distances([Res|Result], [Coord|Remaining], Point):- distance(Res, Point, Coord), distances(Result, Remaining, Point), !.
+
+% pieces_to_coord(Result, List) : Convertit une liste de pièces en une liste de coordonnées. %
+pieces_to_coord([], []):- !.
+pieces_to_coord([[X,Y]|Result], [[Y,X,_,_]|Remaining]):- pieces_to_coord(Result, Remaining).
+
 % distance_on_board(Distance, Point1, Point2, Board) : Compute la distance entre deux couples de coordonnées compte tenu du plateau. %
 distance_on_board(Distance, Point1, [X,Y], Board):- distance(Distance, Point1, [X,Y]), \+ get_on_coord(_, [X,Y], Board).
 % TODO pour l'instant on élimine juste les destinations correspondant à des pièces : c'est évidemment incomplet, à voir si on améliore ça pour avoir une vraie fonction digne de ce nom (éventuellement regarder le code du jeu pour voir comment eux font. Sinon quand il fera la décomposition en mouvement, en prenant en compte le plateau il risque parfois de créer des déplacements de plus de 4 mouvements. On peut alors décider de tronquer les mouvements après le 4e.)
@@ -104,13 +112,32 @@ get_dangerous_holes_by_side_internal(Result, Side, [[X,Y]|Remaining], Board):-
 	get_dangerous_holes_by_side_internal(Result1, Side, Remaining, Board), 
 	(Len = 0 -> Result = [[X,Y]|Result1] ; Result = Result1).
 
-% get_nearest_piece_by_side(Result, Position, Side, Board) : Une fonction qui pour une position donnée retourne la pièce d'un côté donné la plus proche. TODO %
+% get_nearest_piece_by_side(Result, Coord, Side, Board) : Une fonction qui pour une position donnée retourne la pièce d'un côté donné la plus proche. %
+get_nearest_piece_by_side(Result, Coord, Side, Board):- 
+	(Side = gold -> get_opponents(Pieces, Board) ; get_pieces(Pieces, Board)),
+	pieces_to_coord(Coords, Pieces),
+	distances(Dis, Coords, Coord),
+	min_list(Dis, MinDis),
+	nth(Idx, Dis, MinDis),
+	nth(Idx, Pieces, Result).
 
 % convert_to_move(Result, Input) : Convertit un couple source/destination en une liste de mouvements unitaires à passer au moteur. %
 % TODO : tronquer si on a plus de 5 mouvements, s'arrêter si on rencontre une pièce ou qu'on arrive à une pièce adjacente adverse plus puissante que nous. Pas parfait mais bon.
 % TODO aussi gérer le fait de pousser une pièce
 
+% update_nth(List, Idx, New, Result) : Met à jour une liste en modifiant l'élément à l'index donné. %
+% via : https://stackoverflow.com/questions/8519203/prolog-replace-an-element-in-a-list-at-a-specified-index %
+update_nth([_|T], 1, X, [X|T]).
+update_nth([H|T], I, X, [H|R]):- I > 0, NI is I-1, update_nth(T, NI, X, R), !.
+update_nth(L, _, _, L).
+
 % simulate_to_board(Result, Moves, Board) : Prend une liste de mouvement unitaires et les applique au Board. %
+simulate_to_board(Board, [], Board):- !.
+simulate_to_board(Result, [[Source, [X2,Y2]]|Remaining], Board):-
+	get_on_coord([Y,X,Type,Side], Source, Board),
+	nth(Idx, Board, [Y,X,Type,Side]),
+	update_nth(Board, Idx, [Y2,X2,Type,Side], NewBoard),
+	simulate_to_board(Result, Remaining, NewBoard), !.
 
 % count_by_type_and_side(Result, Type, Side, Board) : Compte le nombre de pièces sur le plateau d'un type et côté donnés.
 count_by_type_and_side(0, _, _, []).
